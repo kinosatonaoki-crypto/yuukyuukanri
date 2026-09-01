@@ -124,7 +124,7 @@ tbody tr:last-child td{border-bottom:none;}
   var state = { employees: [] };
   var ui = { authed:false, view:'list', selectedId:null, search:'', filterUrgent:false, readOnly:false, toast:null,
              showAddForm:false, editingBasic:false, editingTakenId:null, pendingDelete:null, showSettings:false,
-             loginError:'', monthOffset:0, showImport:false, importError:'' };
+             loginError:'', payrollOffset:0, showImport:false, importError:'' };
   var root = null;
 
   /* ---------------- date / business logic ---------------- */
@@ -194,21 +194,33 @@ tbody tr:last-child td{border-bottom:none;}
     return { kind:kind, period:cur, daysLeft:daysLeft, remaining:cur.mandatoryRemaining };
   }
 
-  function monthLabel(prefix){
-    var p = prefix.split('-');
-    return p[0]+'年'+Number(p[1])+'月';
-  }
   function shiftMonth(prefix, delta){
     var p = prefix.split('-').map(Number);
     var total = p[0]*12 + (p[1]-1) + delta;
     var y = Math.floor(total/12), m = (total%12)+1;
     return y+'-'+pad2(m);
   }
-  function getMonthEntries(prefix){
+  /* 給与締め: 前月21日〜当月20日。period key はその締め日（20日）が属する年月。 */
+  var PAYROLL_CUTOFF_DAY = 20;
+  function payrollKeyFor(dateISO){
+    var p = dateISO.split('-').map(Number);
+    var y=p[0], m=p[1], d=p[2];
+    var prefix = y+'-'+pad2(m);
+    return d<=PAYROLL_CUTOFF_DAY ? prefix : shiftMonth(prefix, 1);
+  }
+  function payrollRangeForKey(key){
+    var start = shiftMonth(key,-1)+'-'+pad2(PAYROLL_CUTOFF_DAY+1);
+    var end = key+'-'+pad2(PAYROLL_CUTOFF_DAY);
+    return { start:start, end:end };
+  }
+  function payrollLabel(range){
+    return fmtDate(range.start)+' 〜 '+fmtDate(range.end)+'締め分';
+  }
+  function getPayrollEntries(range){
     var out = [];
     state.employees.forEach(function(e){
       (e.taken||[]).forEach(function(t){
-        if(t.date && t.date.slice(0,7)===prefix){
+        if(t.date && t.date>=range.start && t.date<=range.end){
           out.push({ empId:e.id, name:e.sei+' '+e.mei, date:t.date, amount:Number(t.amount), note:t.note||'' });
         }
       });
@@ -403,10 +415,11 @@ tbody tr:last-child td{border-bottom:none;}
         + '</tr>';
     }).join('');
 
-    var curMonthPrefix = shiftMonth(todayISO().slice(0,7), ui.monthOffset||0);
-    var monthEntries = getMonthEntries(curMonthPrefix);
-    var monthTotal = monthEntries.reduce(function(s,x){ return s+x.amount; }, 0);
-    var monthRows = monthEntries.map(function(x){
+    var payrollKey = shiftMonth(payrollKeyFor(todayISO()), ui.payrollOffset||0);
+    var payrollRange = payrollRangeForKey(payrollKey);
+    var payrollEntries = getPayrollEntries(payrollRange);
+    var payrollTotal = payrollEntries.reduce(function(s,x){ return s+x.amount; }, 0);
+    var payrollRows = payrollEntries.map(function(x){
       return '<tr data-open="'+x.empId+'">'
         + '<td class="num-cell" style="text-align:left;">'+fmtDate(x.date)+'</td>'
         + '<td class="name-cell"><span class="name">'+esc(x.name)+'</span></td>'
@@ -414,31 +427,31 @@ tbody tr:last-child td{border-bottom:none;}
         + '<td style="color:var(--text-muted);font-size:13px;">'+esc(x.note)+'</td>'
         + '</tr>';
     }).join('');
-    var monthPanel = '<div class="panel" style="margin-bottom:20px;">'
+    var payrollPanel = '<div class="panel" style="margin-bottom:20px;">'
       + '<div class="section-title" style="display:flex;align-items:center;gap:10px;">'
-      + '<span style="flex:1;">今月の有給取得（'+monthLabel(curMonthPrefix)+'）</span>'
+      + '<span style="flex:1;">給与締め期間の有給取得（'+payrollLabel(payrollRange)+'）</span>'
       + '<span style="display:flex;gap:4px;">'
-      + '<button class="icon-btn" data-action="month-prev" style="padding:5px 9px;">◀ 前月</button>'
-      + (ui.monthOffset ? '<button class="icon-btn" data-action="month-today" style="padding:5px 9px;">今月</button>' : '')
-      + '<button class="icon-btn" data-action="month-next" style="padding:5px 9px;">翌月 ▶</button>'
+      + '<button class="icon-btn" data-action="payroll-prev" style="padding:5px 9px;">◀ 前回</button>'
+      + (ui.payrollOffset ? '<button class="icon-btn" data-action="payroll-today" style="padding:5px 9px;">今回</button>' : '')
+      + '<button class="icon-btn" data-action="payroll-next" style="padding:5px 9px;">次回 ▶</button>'
       + '</span>'
       + '</div>'
       + '<div class="table-wrap" style="padding:8px 20px 18px;"><table><thead><tr>'
       + '<th>取得日</th><th>氏名</th><th>日数</th><th>メモ</th>'
       + '</tr></thead><tbody>'
-      + (monthRows || '<tr><td colspan="4"><div class="empty-msg">この月の取得記録はありません</div></td></tr>')
+      + (payrollRows || '<tr><td colspan="4"><div class="empty-msg">この期間の取得記録はありません</div></td></tr>')
       + '</tbody></table></div>'
       + '</div>';
 
     return renderTopbar()
       + '<div class="stats">'
       + '<div class="stat-card"><div class="num">'+stats.total+'</div><div class="label">在籍人数</div></div>'
-      + '<div class="stat-card"><div class="num">'+fmtNum(monthTotal)+'</div><div class="label">今月の取得日数</div></div>'
+      + '<div class="stat-card"><div class="num">'+fmtNum(payrollTotal)+'</div><div class="label">給与締め期間の取得日数</div></div>'
       + '<div class="stat-card critical"><div class="num">'+stats.urgent+'</div><div class="label">期限間近（30日以内）</div></div>'
       + '<div class="stat-card warn"><div class="num">'+stats.soon+'</div><div class="label">要対応（60日以内）</div></div>'
       + '<div class="stat-card ok"><div class="num">'+stats.done+'</div><div class="label">今期5日消化済み</div></div>'
       + '</div>'
-      + monthPanel
+      + payrollPanel
       + (ui.showImport ? renderImportPanel() : '')
       + '<div class="toolbar">'
       + '<input class="search-input" id="search-input" type="text" placeholder="氏名・ふりがなで検索" value="'+esc(ui.search)+'">'
@@ -649,9 +662,9 @@ tbody tr:last-child td{border-bottom:none;}
     bindAction('back-to-list', function(){ ui.view='list'; ui.selectedId=null; render(); });
     bindAction('edit-basic', function(){ ui.editingBasic=true; render(); });
     bindAction('cancel-edit-basic', function(){ ui.editingBasic=false; render(); });
-    bindAction('month-prev', function(){ ui.monthOffset = (ui.monthOffset||0) - 1; render(); });
-    bindAction('month-next', function(){ ui.monthOffset = (ui.monthOffset||0) + 1; render(); });
-    bindAction('month-today', function(){ ui.monthOffset = 0; render(); });
+    bindAction('payroll-prev', function(){ ui.payrollOffset = (ui.payrollOffset||0) - 1; render(); });
+    bindAction('payroll-next', function(){ ui.payrollOffset = (ui.payrollOffset||0) + 1; render(); });
+    bindAction('payroll-today', function(){ ui.payrollOffset = 0; render(); });
     bindAction('import-toggle', function(){ ui.showImport = !ui.showImport; ui.importError=''; ui.showSettings=false; render(); });
     bindAction('export-data', function(){
       ui.showSettings=false;
