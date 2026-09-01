@@ -113,6 +113,26 @@ tbody tr:last-child td{border-bottom:none;}
 .settings-menu button{display:block;width:100%;text-align:left;background:none;border:none;padding:9px 12px;font-size:13.5px;border-radius:7px;color:var(--text);}
 .settings-menu button:hover{background:var(--surface-2);}
 [hidden]{display:none!important;}
+.print-only{display:none;}
+.print-block{background:#fff;color:#161616;border:1px solid #999;border-radius:6px;padding:22px;margin-bottom:24px;}
+.print-title{font-family:var(--font-display);font-size:19px;font-weight:900;text-align:center;margin-bottom:12px;letter-spacing:.04em;}
+.print-meta{display:flex;flex-wrap:wrap;gap:8px 22px;font-size:13px;margin-bottom:14px;padding-bottom:12px;border-bottom:1px solid #bbb;}
+.print-ledger{width:100%;border-collapse:collapse;font-size:11.5px;}
+.print-ledger th,.print-ledger td{border:1px solid #999;padding:5px 7px;text-align:left;vertical-align:top;}
+.print-ledger th{background:#eee;font-weight:700;}
+.print-ledger .num-cell{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap;}
+.print-ledger .taken-dates{font-size:11px;line-height:1.5;}
+.print-footer{margin-top:10px;font-size:11px;color:#555;text-align:right;}
+@media print{
+  @page{ margin:14mm; }
+  body{background:#fff;}
+  .print-hide, .screen-only{display:none!important;}
+  .print-only{display:block!important;}
+  .app-shell{max-width:100%;padding:0;margin:0;}
+  .print-block{border:none;border-radius:0;padding:0;margin-bottom:0;page-break-after:always;}
+  .print-block:last-child{page-break-after:auto;}
+  .print-ledger th{-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+}
 </style>
 </head>
 <body>
@@ -368,10 +388,64 @@ tbody tr:last-child td{border-bottom:none;}
 
   function renderSettingsMenu(){
     return '<div class="settings-menu">'
+      + '<button data-action="print-all">全員分を印刷用に表示</button>'
       + '<button data-action="export-data">データをエクスポート</button>'
       + '<button data-action="import-toggle">データをインポート</button>'
       + '<button data-action="logout">ログアウト</button>'
       + '</div>';
+  }
+
+  function periodTakenLabel(period, taken){
+    var entries = (taken||[]).filter(function(t){ return t.date>=period.grantDate && t.date<period.periodEnd; })
+      .sort(function(a,b){ return a.date.localeCompare(b.date); });
+    if(!entries.length) return '−';
+    return entries.map(function(t){ return fmtDate(t.date)+'('+fmtNum(t.amount)+')'; }).join('、');
+  }
+
+  function renderPrintBlock(e){
+    var periods = computeLedger(e);
+    var rows = periods.map(function(p){
+      var mand = p.mandatoryApplicable ? (p.mandatoryRemaining<=0 ? '達成' : ('あと'+fmtNum(p.mandatoryRemaining)+'日')) : '対象外';
+      return '<tr>'
+        + '<td>'+fmtDate(p.grantDate)+' 〜 '+fmtDate(addMonthsISO(p.periodEnd,-1))+'</td>'
+        + '<td class="num-cell">'+fmtNum(p.E)+'</td>'
+        + '<td class="num-cell">'+fmtNum(p.F)+'</td>'
+        + '<td class="num-cell">'+fmtNum(p.G)+'</td>'
+        + '<td class="num-cell">'+fmtNum(p.H)+'</td>'
+        + '<td class="num-cell">'+mand+'</td>'
+        + '<td class="num-cell">'+fmtNum(p.J)+'</td>'
+        + '<td class="taken-dates">'+esc(periodTakenLabel(p, e.taken))+'</td>'
+        + '</tr>';
+    }).join('');
+    if(!periods.length){
+      rows = '<tr><td colspan="8">初回付与前です（付与予定日: '+fmtDate(addMonthsISO(e.hireDate,6))+'）</td></tr>';
+    }
+    return '<div class="print-block">'
+      + '<div class="print-title">年次有給休暇管理簿</div>'
+      + '<div class="print-meta">'
+      + '<span>氏名：'+esc(e.sei)+' '+esc(e.mei)+'（'+esc(e.kanaSei)+' '+esc(e.kanaMei)+'）</span>'
+      + '<span>入社日：'+fmtDate(e.hireDate)+'</span>'
+      + '<span>勤続年数：'+tenureLabel(e.hireDate)+'</span>'
+      + '<span>週所定労働日数：'+e.weeklyDays+'日</span>'
+      + '</div>'
+      + '<div class="table-wrap"><table class="print-ledger"><thead><tr>'
+      + '<th>対象期間</th><th>付与</th><th>繰越</th><th>計</th><th>取得</th><th>年5日消化義務</th><th>残日数</th><th>取得日（日数）</th>'
+      + '</tr></thead><tbody>'+rows+'</tbody></table></div>'
+      + '<div class="print-footer">出力日：'+fmtDate(todayISO())+'</div>'
+      + '</div>';
+  }
+
+  function renderPrintAll(){
+    var collator = new Intl.Collator('ja');
+    var list = state.employees.slice().sort(function(a,b){
+      return collator.compare((a.kanaSei||'')+(a.kanaMei||''), (b.kanaSei||'')+(b.kanaMei||''));
+    });
+    return '<div class="print-hide" style="display:flex;align-items:center;gap:10px;padding:14px 0;border-bottom:2px solid var(--accent);margin-bottom:16px;">'
+      + '<button class="back-link" data-action="back-to-list" style="margin:0;">← 一覧に戻る</button>'
+      + '<div class="spacer"></div>'
+      + '<button class="btn" data-action="do-print">印刷する</button>'
+      + '</div>'
+      + list.map(renderPrintBlock).join('');
   }
 
   function renderList(){
@@ -530,7 +604,7 @@ tbody tr:last-child td{border-bottom:none;}
         + metaItem('週所定労働日数', e.weeklyDays+'日')
         + (e.memo ? metaItem('メモ', esc(e.memo)) : '')
         + '</div></div>'
-        + '<div style="display:flex;gap:8px;"><button class="btn secondary" data-action="edit-basic">編集</button><button class="btn danger" data-action="delete-employee">削除</button></div>'
+        + '<div style="display:flex;gap:8px;"><button class="btn secondary" data-action="do-print">印刷</button><button class="btn secondary" data-action="edit-basic">編集</button><button class="btn danger" data-action="delete-employee">削除</button></div>'
         + '</div>';
     }
 
@@ -571,7 +645,8 @@ tbody tr:last-child td{border-bottom:none;}
         + '</div>';
     }).join('') || '<div class="empty-msg">取得履歴はまだありません</div>';
 
-    return renderTopbar()
+    return '<div class="screen-only">'
+      + renderTopbar()
       + '<button class="back-link" data-action="back-to-list">← 一覧に戻る</button>'
       + '<div class="panel" style="margin-bottom:18px;">' + basicBlock + '</div>'
       + '<div class="panel" style="margin-bottom:18px;">'
@@ -585,7 +660,9 @@ tbody tr:last-child td{border-bottom:none;}
       + takenForm
       + '<div class="taken-list">' + takenRows + '</div>'
       + '</div>'
-      + renderModals();
+      + renderModals()
+      + '</div>'
+      + '<div class="print-only">' + renderPrintBlock(e) + '</div>';
   }
 
   function metaItem(k,v){ return '<div class="meta-item"><div class="k">'+esc(k)+'</div><div class="v">'+v+'</div></div>'; }
@@ -616,7 +693,8 @@ tbody tr:last-child td{border-bottom:none;}
   function render(){
     root = root || document.getElementById('root');
     if(!ui.authed){ root.innerHTML = renderLogin(); bindLogin(); return; }
-    root.innerHTML = '<div class="app-shell">' + (ui.view==='detail' ? renderDetail() : renderList()) + '</div>';
+    var body = ui.view==='detail' ? renderDetail() : (ui.view==='printall' ? renderPrintAll() : renderList());
+    root.innerHTML = '<div class="app-shell">' + body + '</div>';
     bindCommon();
   }
 
@@ -660,6 +738,8 @@ tbody tr:last-child td{border-bottom:none;}
     bindAction('settings-toggle', function(){ ui.showSettings = !ui.showSettings; render(); });
     bindAction('logout', function(){ try{ localStorage.removeItem('yukyu_pw'); }catch(e){} authPassword=null; ui.authed=false; ui.showSettings=false; render(); });
     bindAction('back-to-list', function(){ ui.view='list'; ui.selectedId=null; render(); });
+    bindAction('print-all', function(){ ui.showSettings=false; ui.view='printall'; render(); });
+    bindAction('do-print', function(){ window.print(); });
     bindAction('edit-basic', function(){ ui.editingBasic=true; render(); });
     bindAction('cancel-edit-basic', function(){ ui.editingBasic=false; render(); });
     bindAction('payroll-prev', function(){ ui.payrollOffset = (ui.payrollOffset||0) - 1; render(); });
