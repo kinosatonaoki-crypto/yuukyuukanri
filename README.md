@@ -31,12 +31,20 @@ git push -u origin main
 2. 「Add new site」→「Import an existing project」→ GitHubを選び、今作成したリポジトリを選択
 3. ビルド設定は `netlify.toml` から自動で読み込まれます（publish: `public`、functions: `netlify/functions`）。そのまま「Deploy」でOKです
 
-### 3. パスワードを設定する（重要）
-1. Netlifyのサイト管理画面 →「Site configuration」→「Environment variables」
-2. `APP_PASSWORD` という名前で、共通パスワードを値として追加
-3. 保存後、「Deploys」タブから再デプロイ（Trigger deploy）してください（環境変数は再デプロイ後に反映されます）
+### 3. 環境変数を設定する（重要・3つ必要）
+Netlifyの自動Blobs認証がうまく効かない環境があるため、Blobs用の認証情報も手動で渡す構成にしています。「Project configuration」→「Environment variables」で次の3つを追加してください。
+
+| Key | 値 |
+|---|---|
+| `APP_PASSWORD` | アプリの共通ログインパスワード（自分で決める） |
+| `BLOBS_SITE_ID` | 「Project configuration」→「General」→「Project details」に表示されている Project ID（Site ID） |
+| `BLOBS_TOKEN` | 個人アクセストークン。右上のアバター→「User settings」→「Applications」→「Personal access tokens」→「New access token」で発行し、表示された値をコピー（再表示できないので必ずこの時にコピー） |
+
+3つとも追加したら、「Deploys」タブから **Trigger deploy** で再デプロイしてください（環境変数は再デプロイ後に反映されます）。
 
 これで `https://<サイト名>.netlify.app` にアクセスすると、設定したパスワードでログインできるようになります。
+
+うまくいかない場合は「Logs & metrics」→「Functions」→`data`のログにエラーが出るので、そこを確認してください。
 
 ### 4. 既存データの取り込み
 1. デプロイ後のアプリにログイン

@@ -26,7 +26,15 @@ exports.handler = async (event) => {
     return { statusCode: 401, headers: cors, body: JSON.stringify({ error: 'unauthorized' }) };
   }
 
-  const store = getStore('yukyu-data');
+  if (!process.env.BLOBS_SITE_ID || !process.env.BLOBS_TOKEN) {
+    return { statusCode: 500, headers: cors, body: JSON.stringify({ error: 'blobs_not_configured', message: 'BLOBS_SITE_ID / BLOBS_TOKEN environment variables are not set.' }) };
+  }
+
+  const store = getStore({
+    name: 'yukyu-data',
+    siteID: process.env.BLOBS_SITE_ID,
+    token: process.env.BLOBS_TOKEN,
+  });
 
   if (event.httpMethod === 'GET') {
     const data = await store.get('state', { type: 'json' });
