@@ -1,0 +1,773 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>有給休暇管理台帳</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@500;700;900&family=Noto+Sans+JP:wght@400;500;700&display=swap">
+<style>
+:root{
+  --bg:#F5F3ED;--surface:#FFFFFF;--surface-2:#EDE9DE;--border:#DCD7C9;--text:#231F18;--text-muted:#6E6858;
+  --accent:#1F6E5C;--accent-strong:#134A3D;--accent-soft:#E1EFE8;
+  --ok:#2E7D4F;--ok-soft:#E3F2E9;--warn:#A96A0B;--warn-soft:#FBEED9;--critical:#B93B2C;--critical-soft:#FBE4E0;
+  --info:#3A6EA5;--info-soft:#E4EDF7;--shadow:rgba(35,29,17,0.10);
+  --font-display:"Zen Kaku Gothic New",system-ui,"Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;
+  --font-body:"Noto Sans JP",system-ui,"Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#1A1917;--surface:#242220;--surface-2:#2B2925;--border:#3B372F;--text:#EEEAE1;--text-muted:#A39C89;
+  --accent:#4FBFA3;--accent-strong:#79D8BE;--accent-soft:#1E3B33;
+  --ok:#4FAE7C;--ok-soft:#1E3A2A;--warn:#DDA43F;--warn-soft:#3A2E14;--critical:#E17567;--critical-soft:#3B221D;
+  --info:#7AA6D8;--info-soft:#1F2E3E;--shadow:rgba(0,0,0,0.45);
+} }
+:root[data-theme="dark"]{
+  --bg:#1A1917;--surface:#242220;--surface-2:#2B2925;--border:#3B372F;--text:#EEEAE1;--text-muted:#A39C89;
+  --accent:#4FBFA3;--accent-strong:#79D8BE;--accent-soft:#1E3B33;
+  --ok:#4FAE7C;--ok-soft:#1E3A2A;--warn:#DDA43F;--warn-soft:#3A2E14;--critical:#E17567;--critical-soft:#3B221D;
+  --info:#7AA6D8;--info-soft:#1F2E3E;--shadow:rgba(0,0,0,0.45);
+}
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:var(--font-body);}
+#root{min-height:100vh;}
+h1,h2,h3{font-family:var(--font-display);font-weight:700;text-wrap:balance;margin:0;}
+button{font-family:var(--font-body);cursor:pointer;}
+input,select{font-family:var(--font-body);}
+img{max-width:100%;}
+.app-shell{max-width:1080px;margin:0 auto;padding:20px 20px 64px;position:relative;}
+.topbar{display:flex;align-items:center;gap:16px;flex-wrap:wrap;padding:18px 0 14px;border-bottom:2px solid var(--accent);margin-bottom:20px;}
+.brand{display:flex;align-items:baseline;gap:10px;}
+.brand h1{font-size:22px;color:var(--accent-strong);letter-spacing:.02em;}
+.brand .sub{font-size:12px;color:var(--text-muted);}
+.spacer{flex:1;}
+.icon-btn{background:none;border:1px solid var(--border);color:var(--text-muted);border-radius:8px;padding:7px 10px;font-size:13px;display:inline-flex;align-items:center;gap:6px;}
+.icon-btn:hover{border-color:var(--accent);color:var(--accent-strong);}
+.btn{background:var(--accent);color:#fff;border:none;border-radius:8px;padding:9px 16px;font-size:14px;font-weight:500;box-shadow:0 1px 2px var(--shadow);}
+.btn:hover{background:var(--accent-strong);}
+.btn.secondary{background:var(--surface);color:var(--text);border:1px solid var(--border);}
+.btn.secondary:hover{border-color:var(--accent);color:var(--accent-strong);}
+.btn.danger{background:var(--critical);}
+.btn.danger:hover{background:#8f2c20;}
+.btn:disabled{opacity:.5;cursor:not-allowed;}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:20px;}
+.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 16px;box-shadow:0 1px 3px var(--shadow);}
+.stat-card .num{font-family:var(--font-display);font-size:26px;font-variant-numeric:tabular-nums;color:var(--accent-strong);}
+.stat-card.warn .num{color:var(--warn);} .stat-card.critical .num{color:var(--critical);} .stat-card.ok .num{color:var(--ok);}
+.stat-card .label{font-size:12px;color:var(--text-muted);margin-top:2px;}
+.toolbar{display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap;}
+.search-input{flex:1;min-width:180px;padding:9px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:14px;}
+.check-label{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text-muted);white-space:nowrap;}
+.panel{background:var(--surface);border:1px solid var(--border);border-radius:12px;box-shadow:0 1px 3px var(--shadow);}
+.table-wrap{overflow-x:auto;}
+table{width:100%;border-collapse:collapse;font-size:13.5px;}
+thead th{position:sticky;top:0;background:var(--surface-2);color:var(--text-muted);font-weight:500;text-align:left;padding:10px 12px;border-bottom:1px solid var(--border);white-space:nowrap;font-size:12px;letter-spacing:.03em;}
+tbody td{padding:11px 12px;border-bottom:1px solid var(--border);vertical-align:middle;}
+tbody tr{cursor:pointer;}
+tbody tr:hover{background:var(--accent-soft);}
+tbody tr:last-child td{border-bottom:none;}
+.num-cell{font-variant-numeric:tabular-nums;text-align:right;}
+.name-cell .kana{font-size:11px;color:var(--text-muted);display:block;}
+.name-cell .name{font-weight:600;}
+.pill{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:999px;font-size:12px;font-weight:500;white-space:nowrap;}
+.pill .dot{width:6px;height:6px;border-radius:50%;background:currentColor;}
+.pill.ok{background:var(--ok-soft);color:var(--ok);} .pill.warn{background:var(--warn-soft);color:var(--warn);}
+.pill.critical{background:var(--critical-soft);color:var(--critical);} .pill.info{background:var(--info-soft);color:var(--info);}
+.pill.muted{background:var(--surface-2);color:var(--text-muted);}
+.empty-msg{padding:40px 20px;text-align:center;color:var(--text-muted);font-size:14px;}
+.add-form{padding:16px;border-top:1px solid var(--border);background:var(--surface-2);border-radius:0 0 12px 12px;}
+.form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:12px;}
+.field label{display:block;font-size:11.5px;color:var(--text-muted);margin-bottom:4px;}
+.field input,.field select,.field textarea{width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:7px;background:var(--surface);color:var(--text);font-size:14px;}
+.field input:focus,.field select:focus,.field textarea:focus{outline:2px solid var(--accent);outline-offset:1px;border-color:var(--accent);}
+.form-actions{display:flex;gap:8px;justify-content:flex-end;}
+.detail-header{display:flex;align-items:flex-start;gap:16px;padding:20px;flex-wrap:wrap;}
+.detail-header .info{flex:1;min-width:220px;}
+.detail-header h2{font-size:22px;} .detail-header .kana{color:var(--text-muted);font-size:13px;margin-top:2px;}
+.meta-row{display:flex;gap:18px;flex-wrap:wrap;margin-top:12px;}
+.meta-item .k{font-size:11px;color:var(--text-muted);} .meta-item .v{font-size:14.5px;font-weight:500;font-variant-numeric:tabular-nums;}
+.section-title{padding:16px 20px 4px;font-size:15px;font-weight:700;font-family:var(--font-display);color:var(--accent-strong);}
+.ledger-row.current{background:var(--accent-soft);}
+.taken-list{padding:6px 20px 18px;display:flex;flex-direction:column;gap:6px;}
+.taken-row{display:flex;align-items:center;gap:10px;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface);}
+.taken-row .d{font-variant-numeric:tabular-nums;font-weight:600;min-width:82px;}
+.taken-row .a{font-variant-numeric:tabular-nums;color:var(--accent-strong);font-weight:600;min-width:44px;}
+.taken-row .n{flex:1;color:var(--text-muted);font-size:13px;}
+.taken-row .acts{display:flex;gap:6px;}
+.mini-btn{background:none;border:none;color:var(--text-muted);font-size:12px;padding:4px 8px;border-radius:6px;}
+.mini-btn:hover{background:var(--surface-2);color:var(--text);}
+.mini-btn.del:hover{color:var(--critical);}
+.overlay{position:fixed;inset:0;background:rgba(20,18,12,.45);display:flex;align-items:center;justify-content:center;z-index:50;padding:20px;}
+.modal{background:var(--surface);border-radius:14px;padding:22px;max-width:420px;width:100%;box-shadow:0 8px 30px var(--shadow);}
+.modal h3{margin-bottom:8px;font-size:17px;}
+.modal p{font-size:14px;color:var(--text-muted);margin-bottom:16px;}
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--text);color:var(--bg);padding:11px 18px;border-radius:10px;font-size:13.5px;box-shadow:0 6px 20px var(--shadow);z-index:60;}
+.login-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;}
+.login-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:32px;max-width:360px;width:100%;box-shadow:0 4px 24px var(--shadow);}
+.login-card h1{font-size:20px;color:var(--accent-strong);margin-bottom:4px;}
+.login-card .desc{font-size:13px;color:var(--text-muted);margin-bottom:20px;line-height:1.6;}
+.err-msg{color:var(--critical);font-size:12.5px;margin-top:6px;}
+.readonly-banner{background:var(--warn-soft);color:var(--warn);padding:9px 14px;border-radius:8px;font-size:13px;margin-bottom:14px;}
+.back-link{background:none;border:none;color:var(--text-muted);font-size:13px;display:inline-flex;align-items:center;gap:4px;margin-bottom:14px;padding:4px 0;}
+.back-link:hover{color:var(--accent-strong);}
+.settings-menu{position:absolute;right:20px;top:60px;background:var(--surface);border:1px solid var(--border);border-radius:10px;box-shadow:0 6px 20px var(--shadow);padding:6px;z-index:40;min-width:190px;}
+.settings-menu button{display:block;width:100%;text-align:left;background:none;border:none;padding:9px 12px;font-size:13.5px;border-radius:7px;color:var(--text);}
+.settings-menu button:hover{background:var(--surface-2);}
+[hidden]{display:none!important;}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script>
+(function(){
+  var API_URL = '/api/data';
+  var authPassword = null;
+  var state = { employees: [] };
+  var ui = { authed:false, view:'list', selectedId:null, search:'', filterUrgent:false, readOnly:false, toast:null,
+             showAddForm:false, editingBasic:false, editingTakenId:null, pendingDelete:null, showSettings:false,
+             loginError:'', monthOffset:0, showImport:false, importError:'' };
+  var root = null;
+
+  /* ---------------- date / business logic ---------------- */
+  var GRANT_TABLE = {1:[1,2,2,2,3,3,3],2:[3,4,4,5,6,6,7],3:[5,6,6,8,9,10,11],4:[7,8,9,10,12,13,15],5:[10,11,12,14,16,18,20]};
+
+  function pad2(n){ return String(n).padStart(2,'0'); }
+  function todayISO(){ var t=new Date(); return t.getFullYear()+'-'+pad2(t.getMonth()+1)+'-'+pad2(t.getDate()); }
+  function addMonthsISO(iso, months){
+    var p=iso.split('-').map(Number), y=p[0], m=p[1], d=p[2];
+    var total=(y*12+(m-1))+months;
+    var ny=Math.floor(total/12), nm=(total%12)+1;
+    var lastDay=new Date(ny,nm,0).getDate();
+    var nd=Math.min(d,lastDay);
+    return ny+'-'+pad2(nm)+'-'+pad2(nd);
+  }
+  function daysBetween(a,b){ return Math.round((new Date(b+'T00:00:00')-new Date(a+'T00:00:00'))/86400000); }
+  function fmtDate(iso){ if(!iso) return ''; var p=iso.split('-'); return p[0]+'/'+Number(p[1])+'/'+Number(p[2]); }
+  function fmtNum(n){ return (Math.round(n*10)/10).toString(); }
+
+  function grantDaysFor(weeklyDays, idx){
+    var key = weeklyDays>=5 ? 5 : Math.max(1, Math.min(5, weeklyDays||5));
+    var i = Math.min(idx, 6);
+    return GRANT_TABLE[key][i];
+  }
+
+  function tenureLabel(hireDate, asOf){
+    asOf = asOf || todayISO();
+    var h=hireDate.split('-').map(Number), a=asOf.split('-').map(Number);
+    var months = (a[0]*12+a[1]-1) - (h[0]*12+h[1]-1);
+    if(a[2] < h[2]) months--;
+    if(months<0) months=0;
+    var y=Math.floor(months/12), m=months%12;
+    return y>0 ? (y+'年'+m+'ヶ月') : (m+'ヶ月');
+  }
+
+  function computeLedger(emp, asOf){
+    asOf = asOf || todayISO();
+    var periods=[], idx=0, monthsOffset=6;
+    while(true){
+      var grantDate = addMonthsISO(emp.hireDate, monthsOffset);
+      if(grantDate > asOf) break;
+      var periodEnd = addMonthsISO(grantDate, 12);
+      var E = grantDaysFor(emp.weeklyDays, idx);
+      var H = (emp.taken||[]).filter(function(t){ return t.date>=grantDate && t.date<periodEnd; })
+                              .reduce(function(s,t){ return s+Number(t.amount); }, 0);
+      var F;
+      if(idx===0) F=0;
+      else if(idx===1) F = periods[0].G - periods[0].H;
+      else { var prev=periods[idx-1]; F = (prev.F >= prev.H) ? prev.E : (prev.G - prev.H); }
+      var G = E+F, J = G-H;
+      var mandatoryApplicable = E>=10 && grantDate>='2019-04-01';
+      var mandatoryRemaining = mandatoryApplicable ? Math.max(0, 5-H) : null;
+      periods.push({ idx:idx, monthsOffset:monthsOffset, grantDate:grantDate, periodEnd:periodEnd,
+                      E:E, F:F, G:G, H:H, J:J, mandatoryApplicable:mandatoryApplicable, mandatoryRemaining:mandatoryRemaining });
+      monthsOffset += 12; idx++;
+    }
+    return periods;
+  }
+
+  function statusFor(periods){
+    if(!periods.length) return { kind:'before' };
+    var cur = periods[periods.length-1];
+    if(!cur.mandatoryApplicable) return { kind:'na', period:cur };
+    if(cur.mandatoryRemaining<=0) return { kind:'done', period:cur };
+    var daysLeft = daysBetween(todayISO(), cur.periodEnd);
+    var kind = daysLeft<=30 ? 'urgent' : (daysLeft<=60 ? 'soon' : 'pending');
+    return { kind:kind, period:cur, daysLeft:daysLeft, remaining:cur.mandatoryRemaining };
+  }
+
+  function monthLabel(prefix){
+    var p = prefix.split('-');
+    return p[0]+'年'+Number(p[1])+'月';
+  }
+  function shiftMonth(prefix, delta){
+    var p = prefix.split('-').map(Number);
+    var total = p[0]*12 + (p[1]-1) + delta;
+    var y = Math.floor(total/12), m = (total%12)+1;
+    return y+'-'+pad2(m);
+  }
+  function getMonthEntries(prefix){
+    var out = [];
+    state.employees.forEach(function(e){
+      (e.taken||[]).forEach(function(t){
+        if(t.date && t.date.slice(0,7)===prefix){
+          out.push({ empId:e.id, name:e.sei+' '+e.mei, date:t.date, amount:Number(t.amount), note:t.note||'' });
+        }
+      });
+    });
+    out.sort(function(a,b){ return a.date.localeCompare(b.date) || a.name.localeCompare(b.name); });
+    return out;
+  }
+
+  var STATUS_LABEL = {
+    before:{ text:'付与前', cls:'muted' },
+    na:{ text:'対象外', cls:'muted' },
+    done:{ text:'消化済み', cls:'ok' },
+    pending:{ text:'消化義務あり', cls:'info' },
+    urgent:{ text:'期限間近', cls:'critical' },
+    soon:{ text:'要対応', cls:'warn' }
+  };
+
+  /* ---------------- api / persistence ---------------- */
+  function apiGet(pw){
+    return fetch(API_URL, { headers: { 'Authorization': 'Bearer ' + pw } }).then(function(r){
+      if(r.status===401){ var e=new Error('unauthorized'); e.code='unauthorized'; throw e; }
+      if(!r.ok){ var e2=new Error('error'); e2.code='error'; throw e2; }
+      return r.json();
+    });
+  }
+  function apiSave(employees){
+    return fetch(API_URL, {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json', 'Authorization':'Bearer '+authPassword },
+      body: JSON.stringify({ employees: employees })
+    }).then(function(r){
+      if(r.status===401){ var e=new Error('unauthorized'); e.code='unauthorized'; throw e; }
+      if(!r.ok){ var e2=new Error('error'); e2.code='error'; throw e2; }
+      return r.json();
+    });
+  }
+
+  function publishState(newState){
+    var prevState = state;
+    state = newState;
+    render();
+    apiSave(newState.employees).catch(function(err){
+      state = prevState;
+      if(err && err.code==='unauthorized'){
+        try{ localStorage.removeItem('yukyu_pw'); }catch(e){}
+        authPassword = null; ui.authed=false;
+        showToast('セッションが切れました。再度ログインしてください。');
+      } else {
+        showToast('保存に失敗しました。ネットワークを確認してもう一度お試しください。');
+      }
+      render();
+    });
+  }
+
+  function showToast(msg){
+    ui.toast = msg; render();
+    setTimeout(function(){ ui.toast=null; render(); }, 3200);
+  }
+
+  function withClone(fn){
+    var clone = JSON.parse(JSON.stringify(state));
+    fn(clone);
+    publishState(clone);
+  }
+  function genId(prefix){ return prefix+'_'+Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
+  function findEmp(s, id){ return s.employees.find(function(x){ return x.id===id; }); }
+
+  function addEmployee(data){
+    withClone(function(s){
+      s.employees.push({ id:genId('e'), sei:data.sei, mei:data.mei, kanaSei:data.kanaSei, kanaMei:data.kanaMei,
+                          hireDate:data.hireDate, weeklyDays:Number(data.weeklyDays), memo:data.memo||'', active:true, taken:[] });
+    });
+  }
+  function updateEmployeeBasic(id, data){
+    withClone(function(s){
+      var e=findEmp(s,id); if(!e) return;
+      e.sei=data.sei; e.mei=data.mei; e.kanaSei=data.kanaSei; e.kanaMei=data.kanaMei;
+      e.hireDate=data.hireDate; e.weeklyDays=Number(data.weeklyDays); e.memo=data.memo||'';
+    });
+  }
+  function deleteEmployee(id){
+    withClone(function(s){ s.employees = s.employees.filter(function(x){ return x.id!==id; }); });
+  }
+  function addTaken(empId, entry){
+    withClone(function(s){
+      var e=findEmp(s,empId); if(!e) return;
+      e.taken.push({ id:genId('t'), date:entry.date, amount:Number(entry.amount), note:entry.note||'' });
+    });
+  }
+  function updateTaken(empId, takenId, entry){
+    withClone(function(s){
+      var e=findEmp(s,empId); if(!e) return;
+      var t=e.taken.find(function(x){ return x.id===takenId; }); if(!t) return;
+      t.date=entry.date; t.amount=Number(entry.amount); t.note=entry.note||'';
+    });
+  }
+  function deleteTaken(empId, takenId){
+    withClone(function(s){
+      var e=findEmp(s,empId); if(!e) return;
+      e.taken = e.taken.filter(function(x){ return x.id!==takenId; });
+    });
+  }
+  function importEmployees(list){
+    withClone(function(s){ s.employees = list; });
+  }
+
+  /* ---------------- render helpers ---------------- */
+  function esc(str){
+    return String(str==null?'':str).replace(/[&<>"']/g, function(c){
+      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+    });
+  }
+
+  function renderLogin(){
+    return '<div class="login-wrap"><div class="login-card">'
+      + '<h1>有給休暇管理台帳</h1>'
+      + '<div class="desc">共通パスワードを入力してください。パスワードが分からない場合は管理者にお問い合わせください。</div>'
+      + '<form id="login-form">'
+      + '<div class="field" style="margin-bottom:12px;"><label>パスワード</label><input type="password" name="pw" required autocomplete="current-password" autofocus></div>'
+      + (ui.loginError ? '<div class="err-msg">'+esc(ui.loginError)+'</div>' : '')
+      + '<button type="submit" class="btn" id="login-btn" style="width:100%;margin-top:6px;">開く</button>'
+      + '</form></div></div>';
+  }
+
+  function computeStats(){
+    var urgent=0, soon=0, done=0, before=0;
+    state.employees.forEach(function(e){
+      var st = statusFor(computeLedger(e));
+      if(st.kind==='urgent') urgent++;
+      else if(st.kind==='soon') soon++;
+      else if(st.kind==='done') done++;
+      else if(st.kind==='before') before++;
+    });
+    return { total: state.employees.length, urgent:urgent, soon:soon, done:done, before:before };
+  }
+
+  function renderTopbar(){
+    return '<div class="topbar">'
+      + '<div class="brand"><h1>有給休暇管理台帳</h1><span class="sub">年次有給休暇管理簿</span></div>'
+      + '<div class="spacer"></div>'
+      + '<button class="icon-btn" data-action="settings-toggle">⚙ 設定</button>'
+      + '</div>'
+      + (ui.showSettings ? renderSettingsMenu() : '');
+  }
+
+  function renderSettingsMenu(){
+    return '<div class="settings-menu">'
+      + '<button data-action="export-data">データをエクスポート</button>'
+      + '<button data-action="import-toggle">データをインポート</button>'
+      + '<button data-action="logout">ログアウト</button>'
+      + '</div>';
+  }
+
+  function renderList(){
+    var stats = computeStats();
+    var q = ui.search.trim();
+    var collator = new Intl.Collator('ja');
+    var list = state.employees.slice().sort(function(a,b){
+      return collator.compare((a.kanaSei||'')+(a.kanaMei||''), (b.kanaSei||'')+(b.kanaMei||''));
+    });
+    if(q){
+      list = list.filter(function(e){
+        var hay = [e.sei,e.mei,e.kanaSei,e.kanaMei].join(' ');
+        return hay.indexOf(q) !== -1;
+      });
+    }
+    if(ui.filterUrgent){
+      list = list.filter(function(e){
+        var k = statusFor(computeLedger(e)).kind;
+        return k==='urgent' || k==='soon';
+      });
+    }
+
+    var rows = list.map(function(e){
+      var periods = computeLedger(e);
+      var st = statusFor(periods);
+      var lbl = STATUS_LABEL[st.kind];
+      var remaining = periods.length ? fmtNum(periods[periods.length-1].J) : '−';
+      var extra = '';
+      if(st.kind==='urgent' || st.kind==='soon' || st.kind==='pending'){
+        extra = '（あと'+fmtNum(st.remaining)+'日 / 期限'+fmtDate(st.period.periodEnd)+'）';
+      } else if(st.kind==='before'){
+        extra = '（初回付与 '+fmtDate(addMonthsISO(e.hireDate,6))+'）';
+      }
+      return '<tr data-open="'+e.id+'">'
+        + '<td class="name-cell"><span class="name">'+esc(e.sei)+' '+esc(e.mei)+'</span><span class="kana">'+esc(e.kanaSei)+' '+esc(e.kanaMei)+'</span></td>'
+        + '<td class="num-cell">'+esc(fmtDate(e.hireDate))+'</td>'
+        + '<td class="num-cell">'+esc(tenureLabel(e.hireDate))+'</td>'
+        + '<td class="num-cell">'+esc(e.weeklyDays)+'日/週</td>'
+        + '<td class="num-cell">'+remaining+' 日</td>'
+        + '<td><span class="pill '+lbl.cls+'"><span class="dot"></span>'+lbl.text+'</span> <span style="font-size:11px;color:var(--text-muted);">'+extra+'</span></td>'
+        + '</tr>';
+    }).join('');
+
+    var curMonthPrefix = shiftMonth(todayISO().slice(0,7), ui.monthOffset||0);
+    var monthEntries = getMonthEntries(curMonthPrefix);
+    var monthTotal = monthEntries.reduce(function(s,x){ return s+x.amount; }, 0);
+    var monthRows = monthEntries.map(function(x){
+      return '<tr data-open="'+x.empId+'">'
+        + '<td class="num-cell" style="text-align:left;">'+fmtDate(x.date)+'</td>'
+        + '<td class="name-cell"><span class="name">'+esc(x.name)+'</span></td>'
+        + '<td class="num-cell">'+fmtNum(x.amount)+' 日</td>'
+        + '<td style="color:var(--text-muted);font-size:13px;">'+esc(x.note)+'</td>'
+        + '</tr>';
+    }).join('');
+    var monthPanel = '<div class="panel" style="margin-bottom:20px;">'
+      + '<div class="section-title" style="display:flex;align-items:center;gap:10px;">'
+      + '<span style="flex:1;">今月の有給取得（'+monthLabel(curMonthPrefix)+'）</span>'
+      + '<span style="display:flex;gap:4px;">'
+      + '<button class="icon-btn" data-action="month-prev" style="padding:5px 9px;">◀ 前月</button>'
+      + (ui.monthOffset ? '<button class="icon-btn" data-action="month-today" style="padding:5px 9px;">今月</button>' : '')
+      + '<button class="icon-btn" data-action="month-next" style="padding:5px 9px;">翌月 ▶</button>'
+      + '</span>'
+      + '</div>'
+      + '<div class="table-wrap" style="padding:8px 20px 18px;"><table><thead><tr>'
+      + '<th>取得日</th><th>氏名</th><th>日数</th><th>メモ</th>'
+      + '</tr></thead><tbody>'
+      + (monthRows || '<tr><td colspan="4"><div class="empty-msg">この月の取得記録はありません</div></td></tr>')
+      + '</tbody></table></div>'
+      + '</div>';
+
+    return renderTopbar()
+      + '<div class="stats">'
+      + '<div class="stat-card"><div class="num">'+stats.total+'</div><div class="label">在籍人数</div></div>'
+      + '<div class="stat-card"><div class="num">'+fmtNum(monthTotal)+'</div><div class="label">今月の取得日数</div></div>'
+      + '<div class="stat-card critical"><div class="num">'+stats.urgent+'</div><div class="label">期限間近（30日以内）</div></div>'
+      + '<div class="stat-card warn"><div class="num">'+stats.soon+'</div><div class="label">要対応（60日以内）</div></div>'
+      + '<div class="stat-card ok"><div class="num">'+stats.done+'</div><div class="label">今期5日消化済み</div></div>'
+      + '</div>'
+      + monthPanel
+      + (ui.showImport ? renderImportPanel() : '')
+      + '<div class="toolbar">'
+      + '<input class="search-input" id="search-input" type="text" placeholder="氏名・ふりがなで検索" value="'+esc(ui.search)+'">'
+      + '<label class="check-label"><input type="checkbox" id="filter-urgent" '+(ui.filterUrgent?'checked':'')+'> 要対応のみ表示</label>'
+      + '<button class="btn" data-action="toggle-add">'+(ui.showAddForm?'閉じる':'+ 従業員を追加')+'</button>'
+      + '</div>'
+      + '<div class="panel">'
+      + '<div class="table-wrap"><table><thead><tr>'
+      + '<th>氏名</th><th>入社日</th><th>勤続</th><th>週所定日数</th><th>残日数</th><th>年5日消化義務</th>'
+      + '</tr></thead><tbody>'
+      + (rows || '<tr><td colspan="6"><div class="empty-msg">該当する従業員がいません</div></td></tr>')
+      + '</tbody></table></div>'
+      + (ui.showAddForm ? renderAddForm() : '')
+      + '</div>'
+      + renderModals();
+  }
+
+  function renderImportPanel(){
+    return '<div class="panel" style="margin-bottom:20px;padding:16px 20px;">'
+      + '<div style="font-weight:700;margin-bottom:8px;">データをインポート</div>'
+      + '<div style="font-size:13px;color:var(--text-muted);margin-bottom:10px;">エクスポートしたJSONファイルを選択すると、現在のデータをすべて置き換えます。</div>'
+      + '<input type="file" id="import-file" accept="application/json">'
+      + (ui.importError ? '<div class="err-msg">'+esc(ui.importError)+'</div>' : '')
+      + '<div class="form-actions" style="margin-top:10px;"><button class="btn secondary" data-action="import-toggle">閉じる</button></div>'
+      + '</div>';
+  }
+
+  function renderAddForm(){
+    return '<form id="add-emp-form" class="add-form">'
+      + '<div class="form-grid">'
+      + field('sei','姓','text',true)
+      + field('mei','名','text',true)
+      + field('kanaSei','せい（ふりがな）','text',false)
+      + field('kanaMei','めい（ふりがな）','text',false)
+      + field('hireDate','入社日','date',true)
+      + weeklyDaysField(5)
+      + '</div>'
+      + '<div class="field" style="margin-bottom:12px;"><label>メモ</label><input type="text" name="memo" placeholder="任意"></div>'
+      + '<div class="form-actions"><button type="button" class="btn secondary" data-action="toggle-add">キャンセル</button><button type="submit" class="btn">追加</button></div>'
+      + '</form>';
+  }
+
+  function field(name,label,type,required){
+    return '<div class="field"><label>'+label+'</label><input type="'+type+'" name="'+name+'" '+(required?'required':'')+'></div>';
+  }
+  function weeklyDaysField(val){
+    var opts=[1,2,3,4,5].map(function(n){ return '<option value="'+n+'" '+(n===val?'selected':'')+'>'+n+'日'+(n===5?'（フルタイム）':'')+'</option>'; }).join('');
+    return '<div class="field"><label>週所定労働日数</label><select name="weeklyDays">'+opts+'</select></div>';
+  }
+
+  function renderDetail(){
+    var e = findEmp(state, ui.selectedId);
+    if(!e){ ui.view='list'; return renderList(); }
+    var periods = computeLedger(e);
+
+    var basicBlock;
+    if(ui.editingBasic){
+      basicBlock = '<form id="basic-form" class="add-form" style="border-top:none;border-radius:12px;">'
+        + '<div class="form-grid">'
+        + fieldVal('sei','姓','text',true,e.sei)
+        + fieldVal('mei','名','text',true,e.mei)
+        + fieldVal('kanaSei','せい（ふりがな）','text',false,e.kanaSei)
+        + fieldVal('kanaMei','めい（ふりがな）','text',false,e.kanaMei)
+        + fieldVal('hireDate','入社日','date',true,e.hireDate)
+        + weeklyDaysField(e.weeklyDays)
+        + '</div>'
+        + '<div class="field" style="margin-bottom:12px;"><label>メモ</label><input type="text" name="memo" value="'+esc(e.memo)+'"></div>'
+        + '<div class="form-actions"><button type="button" class="btn secondary" data-action="cancel-edit-basic">キャンセル</button><button type="submit" class="btn">保存</button></div>'
+        + '</form>';
+    } else {
+      basicBlock = '<div class="detail-header"><div class="info">'
+        + '<h2>'+esc(e.sei)+' '+esc(e.mei)+'</h2><div class="kana">'+esc(e.kanaSei)+' '+esc(e.kanaMei)+'</div>'
+        + '<div class="meta-row">'
+        + metaItem('入社日', fmtDate(e.hireDate))
+        + metaItem('勤続', tenureLabel(e.hireDate))
+        + metaItem('週所定労働日数', e.weeklyDays+'日')
+        + (e.memo ? metaItem('メモ', esc(e.memo)) : '')
+        + '</div></div>'
+        + '<div style="display:flex;gap:8px;"><button class="btn secondary" data-action="edit-basic">編集</button><button class="btn danger" data-action="delete-employee">削除</button></div>'
+        + '</div>';
+    }
+
+    var ledgerRows = periods.map(function(p,i){
+      var isCur = i===periods.length-1;
+      var mand = p.mandatoryApplicable ? (p.mandatoryRemaining<=0 ? '達成' : ('あと'+fmtNum(p.mandatoryRemaining)+'日')) : '対象外';
+      return '<tr class="ledger-row'+(isCur?' current':'')+'">'
+        + '<td>'+fmtDate(p.grantDate)+' 〜 '+fmtDate(addMonthsISO(p.periodEnd,-1))+'</td>'
+        + '<td class="num-cell">'+fmtNum(p.E)+'</td>'
+        + '<td class="num-cell">'+fmtNum(p.F)+'</td>'
+        + '<td class="num-cell">'+fmtNum(p.G)+'</td>'
+        + '<td class="num-cell">'+fmtNum(p.H)+'</td>'
+        + '<td class="num-cell">'+mand+'</td>'
+        + '<td class="num-cell" style="font-weight:600;">'+fmtNum(p.J)+'</td>'
+        + '</tr>';
+    }).join('');
+    if(!periods.length){
+      ledgerRows = '<tr><td colspan="7"><div class="empty-msg">初回付与前です（付与予定日: '+fmtDate(addMonthsISO(e.hireDate,6))+'）</div></td></tr>';
+    }
+
+    var editingEntry = ui.editingTakenId ? e.taken.find(function(t){ return t.id===ui.editingTakenId; }) : null;
+    var takenForm = '<form id="taken-form" class="add-form" style="border-radius:10px;margin:0 20px 16px;">'
+      + '<div class="form-grid">'
+      + fieldVal('date','取得日','date',true, editingEntry?editingEntry.date:todayISO())
+      + amountField(editingEntry?editingEntry.amount:1)
+      + '<div class="field"><label>メモ</label><input type="text" name="note" value="'+esc(editingEntry?editingEntry.note:'')+'" placeholder="任意"></div>'
+      + '</div>'
+      + '<div class="form-actions">'
+      + (editingEntry ? '<button type="button" class="btn secondary" data-action="cancel-edit-taken">キャンセル</button>' : '')
+      + '<button type="submit" class="btn">'+(editingEntry?'更新':'記録を追加')+'</button>'
+      + '</div></form>';
+
+    var sortedTaken = e.taken.slice().sort(function(a,b){ return b.date.localeCompare(a.date); });
+    var takenRows = sortedTaken.map(function(t){
+      return '<div class="taken-row"><span class="d">'+fmtDate(t.date)+'</span><span class="a">'+fmtNum(t.amount)+'日</span>'
+        + '<span class="n">'+esc(t.note)+'</span>'
+        + '<span class="acts"><button class="mini-btn" data-action="edit-taken" data-id="'+t.id+'">編集</button><button class="mini-btn del" data-action="delete-taken" data-id="'+t.id+'">削除</button></span>'
+        + '</div>';
+    }).join('') || '<div class="empty-msg">取得履歴はまだありません</div>';
+
+    return renderTopbar()
+      + '<button class="back-link" data-action="back-to-list">← 一覧に戻る</button>'
+      + '<div class="panel" style="margin-bottom:18px;">' + basicBlock + '</div>'
+      + '<div class="panel" style="margin-bottom:18px;">'
+      + '<div class="section-title">有給休暇付与・消化台帳</div>'
+      + '<div class="table-wrap" style="padding:0 20px 18px;"><table><thead><tr>'
+      + '<th>対象期間</th><th>付与</th><th>繰越</th><th>計</th><th>取得</th><th>年5日消化義務</th><th>残日数</th>'
+      + '</tr></thead><tbody>' + ledgerRows + '</tbody></table></div>'
+      + '</div>'
+      + '<div class="panel">'
+      + '<div class="section-title">取得履歴</div>'
+      + takenForm
+      + '<div class="taken-list">' + takenRows + '</div>'
+      + '</div>'
+      + renderModals();
+  }
+
+  function metaItem(k,v){ return '<div class="meta-item"><div class="k">'+esc(k)+'</div><div class="v">'+v+'</div></div>'; }
+  function fieldVal(name,label,type,required,val){
+    return '<div class="field"><label>'+label+'</label><input type="'+type+'" name="'+name+'" '+(required?'required':'')+' value="'+esc(val)+'"></div>';
+  }
+  function amountField(val){
+    return '<div class="field"><label>日数</label><select name="amount">'
+      + '<option value="1" '+(val===1?'selected':'')+'>1日</option>'
+      + '<option value="0.5" '+(val===0.5?'selected':'')+'>0.5日（半休）</option>'
+      + '</select></div>';
+  }
+
+  function renderModals(){
+    var html = '';
+    if(ui.pendingDelete){
+      var pd = ui.pendingDelete;
+      html += '<div class="overlay" data-action="close-overlay"><div class="modal" data-stop="1">'
+        + '<h3>削除の確認</h3><p>'+esc(pd.message)+'</p>'
+        + '<div class="form-actions"><button class="btn secondary" data-action="cancel-delete">キャンセル</button><button class="btn danger" data-action="confirm-delete">削除する</button></div>'
+        + '</div></div>';
+    }
+    if(ui.toast){ html += '<div class="toast">'+esc(ui.toast)+'</div>'; }
+    return html;
+  }
+
+  /* ---------------- render + bind ---------------- */
+  function render(){
+    root = root || document.getElementById('root');
+    if(!ui.authed){ root.innerHTML = renderLogin(); bindLogin(); return; }
+    root.innerHTML = '<div class="app-shell">' + (ui.view==='detail' ? renderDetail() : renderList()) + '</div>';
+    bindCommon();
+  }
+
+  function bindLogin(){
+    var f = document.getElementById('login-form');
+    if(!f) return;
+    f.addEventListener('submit', function(ev){
+      ev.preventDefault();
+      var fd = new FormData(f);
+      var pw = fd.get('pw');
+      var btn = document.getElementById('login-btn');
+      if(btn){ btn.disabled = true; btn.textContent='確認中...'; }
+      apiGet(pw).then(function(data){
+        authPassword = pw;
+        try{ localStorage.setItem('yukyu_pw', pw); }catch(e){}
+        state = { employees: (data && data.employees) || [] };
+        ui.authed = true; ui.loginError='';
+        render();
+      }).catch(function(err){
+        ui.loginError = (err && err.code==='unauthorized') ? 'パスワードが違います' : '接続に失敗しました。しばらくして再度お試しください。';
+        render();
+      });
+    });
+  }
+
+  function bindCommon(){
+    var searchInput = document.getElementById('search-input');
+    if(searchInput){
+      searchInput.addEventListener('input', function(){ ui.search = searchInput.value; render();
+        var el = document.getElementById('search-input'); if(el){ el.focus(); el.setSelectionRange(el.value.length, el.value.length); }
+      });
+    }
+    var filterCk = document.getElementById('filter-urgent');
+    if(filterCk){ filterCk.addEventListener('change', function(){ ui.filterUrgent = filterCk.checked; render(); }); }
+
+    root.querySelectorAll('[data-open]').forEach(function(tr){
+      tr.addEventListener('click', function(){ ui.view='detail'; ui.selectedId=tr.getAttribute('data-open'); ui.editingBasic=false; ui.editingTakenId=null; ui.showAddForm=false; render(); });
+    });
+
+    bindAction('toggle-add', function(){ ui.showAddForm = !ui.showAddForm; render(); });
+    bindAction('settings-toggle', function(){ ui.showSettings = !ui.showSettings; render(); });
+    bindAction('logout', function(){ try{ localStorage.removeItem('yukyu_pw'); }catch(e){} authPassword=null; ui.authed=false; ui.showSettings=false; render(); });
+    bindAction('back-to-list', function(){ ui.view='list'; ui.selectedId=null; render(); });
+    bindAction('edit-basic', function(){ ui.editingBasic=true; render(); });
+    bindAction('cancel-edit-basic', function(){ ui.editingBasic=false; render(); });
+    bindAction('month-prev', function(){ ui.monthOffset = (ui.monthOffset||0) - 1; render(); });
+    bindAction('month-next', function(){ ui.monthOffset = (ui.monthOffset||0) + 1; render(); });
+    bindAction('month-today', function(){ ui.monthOffset = 0; render(); });
+    bindAction('import-toggle', function(){ ui.showImport = !ui.showImport; ui.importError=''; ui.showSettings=false; render(); });
+    bindAction('export-data', function(){
+      ui.showSettings=false;
+      var blob = new Blob([JSON.stringify(state, null, 2)], { type:'application/json' });
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement('a');
+      a.href = url; a.download = '有給休暇管理台帳_'+todayISO()+'.json';
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      render();
+    });
+    bindAction('delete-employee', function(){
+      var e = findEmp(state, ui.selectedId);
+      ui.pendingDelete = { type:'employee', id:ui.selectedId, message: (e? (e.sei+' '+e.mei) : '') + ' を削除します。取得履歴もすべて削除されます。よろしいですか？' };
+      render();
+    });
+    bindAction('edit-taken', function(el){ ui.editingTakenId = el.getAttribute('data-id'); render(); });
+    bindAction('cancel-edit-taken', function(){ ui.editingTakenId = null; render(); });
+    bindAction('delete-taken', function(el){
+      var id = el.getAttribute('data-id');
+      ui.pendingDelete = { type:'taken', empId:ui.selectedId, id:id, message:'この取得記録を削除します。よろしいですか？' };
+      render();
+    });
+    bindAction('cancel-delete', function(){ ui.pendingDelete=null; render(); });
+    bindAction('confirm-delete', function(){
+      var pd = ui.pendingDelete; ui.pendingDelete=null;
+      if(!pd) return;
+      if(pd.type==='employee'){ ui.view='list'; ui.selectedId=null; deleteEmployee(pd.id); }
+      else if(pd.type==='taken'){ deleteTaken(pd.empId, pd.id); }
+    });
+    root.querySelectorAll('[data-action="close-overlay"]').forEach(function(el){
+      el.addEventListener('click', function(ev){ if(ev.target===el){ ui.pendingDelete=null; render(); } });
+    });
+
+    var importFile = document.getElementById('import-file');
+    if(importFile){
+      importFile.addEventListener('change', function(){
+        var file = importFile.files && importFile.files[0];
+        if(!file) return;
+        var reader = new FileReader();
+        reader.onload = function(){
+          try{
+            var parsed = JSON.parse(String(reader.result));
+            var list = Array.isArray(parsed) ? parsed : parsed.employees;
+            if(!Array.isArray(list)) throw new Error('bad shape');
+            ui.showImport=false; ui.importError='';
+            importEmployees(list);
+          }catch(e){
+            ui.importError = 'ファイルの読み込みに失敗しました。エクスポートしたJSONファイルを選択してください。';
+            render();
+          }
+        };
+        reader.readAsText(file, 'utf-8');
+      });
+    }
+
+    var addForm = document.getElementById('add-emp-form');
+    if(addForm){
+      addForm.addEventListener('submit', function(ev){
+        ev.preventDefault();
+        var fd = new FormData(addForm);
+        var empData = { sei:fd.get('sei'), mei:fd.get('mei'), kanaSei:fd.get('kanaSei'), kanaMei:fd.get('kanaMei'),
+                       hireDate:fd.get('hireDate'), weeklyDays:fd.get('weeklyDays'), memo:fd.get('memo') };
+        ui.showAddForm=false;
+        addEmployee(empData);
+      });
+    }
+    var basicForm = document.getElementById('basic-form');
+    if(basicForm){
+      basicForm.addEventListener('submit', function(ev){
+        ev.preventDefault();
+        var fd = new FormData(basicForm);
+        var basicData = { sei:fd.get('sei'), mei:fd.get('mei'), kanaSei:fd.get('kanaSei'), kanaMei:fd.get('kanaMei'),
+                       hireDate:fd.get('hireDate'), weeklyDays:fd.get('weeklyDays'), memo:fd.get('memo') };
+        ui.editingBasic=false;
+        updateEmployeeBasic(ui.selectedId, basicData);
+      });
+    }
+    var takenForm = document.getElementById('taken-form');
+    if(takenForm){
+      takenForm.addEventListener('submit', function(ev){
+        ev.preventDefault();
+        var fd = new FormData(takenForm);
+        var entry = { date:fd.get('date'), amount:fd.get('amount'), note:fd.get('note') };
+        var editingId = ui.editingTakenId;
+        ui.editingTakenId = null;
+        if(editingId){ updateTaken(ui.selectedId, editingId, entry); }
+        else { addTaken(ui.selectedId, entry); }
+      });
+    }
+  }
+
+  function bindAction(name, fn){
+    root.querySelectorAll('[data-action="'+name+'"]').forEach(function(el){
+      el.addEventListener('click', function(ev){ ev.stopPropagation(); fn(el); });
+    });
+  }
+
+  /* ---------------- boot ---------------- */
+  root = document.getElementById('root');
+  var remembered = null;
+  try{ remembered = localStorage.getItem('yukyu_pw'); }catch(e){}
+  if(remembered){
+    apiGet(remembered).then(function(data){
+      authPassword = remembered;
+      state = { employees: (data && data.employees) || [] };
+      ui.authed = true;
+      render();
+    }).catch(function(){
+      try{ localStorage.removeItem('yukyu_pw'); }catch(e){}
+      render();
+    });
+  } else {
+    render();
+  }
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,9 @@
+{
+  "name": "yukyu-kanri-app",
+  "version": "1.0.0",
+  "private": true,
+  "description": "有給休暇管理台帳（Netlify Functions + Netlify Blobs）",
+  "dependencies": {
+    "@netlify/blobs": "^8.1.0"
+  }
+}
