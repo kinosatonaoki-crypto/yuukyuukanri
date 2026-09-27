@@ -236,16 +236,17 @@ tbody tr:last-child td{border-bottom:none;}
   function payrollLabel(range){
     return fmtDate(range.start)+' 〜 '+fmtDate(range.end)+'締め分';
   }
-  function getPayrollEntries(range){
+  function getPayrollSummary(range){
     var out = [];
+    var collator = new Intl.Collator('ja');
     state.employees.forEach(function(e){
-      (e.taken||[]).forEach(function(t){
-        if(t.date && t.date>=range.start && t.date<=range.end){
-          out.push({ empId:e.id, name:e.sei+' '+e.mei, date:t.date, amount:Number(t.amount), note:t.note||'' });
-        }
-      });
+      var total = (e.taken||[]).filter(function(t){ return t.date && t.date>=range.start && t.date<=range.end; })
+        .reduce(function(s,t){ return s+Number(t.amount); }, 0);
+      if(total>0){
+        out.push({ empId:e.id, name:e.sei+' '+e.mei, kana:(e.kanaSei||'')+(e.kanaMei||''), total:total });
+      }
     });
-    out.sort(function(a,b){ return a.date.localeCompare(b.date) || a.name.localeCompare(b.name); });
+    out.sort(function(a,b){ return collator.compare(a.kana,b.kana); });
     return out;
   }
 
@@ -491,14 +492,12 @@ tbody tr:last-child td{border-bottom:none;}
 
     var payrollKey = shiftMonth(payrollKeyFor(todayISO()), ui.payrollOffset||0);
     var payrollRange = payrollRangeForKey(payrollKey);
-    var payrollEntries = getPayrollEntries(payrollRange);
-    var payrollTotal = payrollEntries.reduce(function(s,x){ return s+x.amount; }, 0);
-    var payrollRows = payrollEntries.map(function(x){
+    var payrollSummary = getPayrollSummary(payrollRange);
+    var payrollTotal = payrollSummary.reduce(function(s,x){ return s+x.total; }, 0);
+    var payrollRows = payrollSummary.map(function(x){
       return '<tr data-open="'+x.empId+'">'
-        + '<td class="num-cell" style="text-align:left;">'+fmtDate(x.date)+'</td>'
         + '<td class="name-cell"><span class="name">'+esc(x.name)+'</span></td>'
-        + '<td class="num-cell">'+fmtNum(x.amount)+' 日</td>'
-        + '<td style="color:var(--text-muted);font-size:13px;">'+esc(x.note)+'</td>'
+        + '<td class="num-cell">'+fmtNum(x.total)+' 日</td>'
         + '</tr>';
     }).join('');
     var payrollPanel = '<div class="panel" style="margin-bottom:20px;">'
@@ -511,9 +510,9 @@ tbody tr:last-child td{border-bottom:none;}
       + '</span>'
       + '</div>'
       + '<div class="table-wrap" style="padding:8px 20px 18px;"><table><thead><tr>'
-      + '<th>取得日</th><th>氏名</th><th>日数</th><th>メモ</th>'
+      + '<th>氏名</th><th>取得日数（合計）</th>'
       + '</tr></thead><tbody>'
-      + (payrollRows || '<tr><td colspan="4"><div class="empty-msg">この期間の取得記録はありません</div></td></tr>')
+      + (payrollRows || '<tr><td colspan="2"><div class="empty-msg">この期間の取得記録はありません</div></td></tr>')
       + '</tbody></table></div>'
       + '</div>';
 
